@@ -8,7 +8,9 @@ class RecipeFilters(FilterSet):
     is_in_shopping_cart = filters.BooleanFilter(
         method='filter_is_in_shopping_cart'
     )
-    tags = filters.CharFilter(field_name='tags__slug', lookup_expr='exact')
+    tags = filters.AllValuesMultipleFilter(
+        field_name='tags__slug', lookup_expr='exact'
+    )
 
     class Meta:
         model = Recipe
@@ -17,7 +19,7 @@ class RecipeFilters(FilterSet):
     def filter_is_favorited(self, qs, name, value):
         user = self.request.user
         if value and user.is_authenticated:
-            return qs.filter(favorite__user=user)
+            return qs.filter(favorites__user=user)
         return qs
 
     def filter_is_in_shopping_cart(self, qs, name, value):

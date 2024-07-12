@@ -7,40 +7,37 @@ from reportlab.pdfgen import canvas
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
 
-from foodgram.models import (
-    ShortLink, RecipeIngredient
-)
+from foodgram.models import Recipe
 
 
 class SearchRedirectView(RedirectView):
     """Перенаправление коротких ссылок на страницу рецепта."""
 
     def get_redirect_url(self, *args, **kwargs):
-        link = get_object_or_404(
-            ShortLink, short_url=self.request.build_absolute_uri())
-        url = link.long_url
+        full_path = (self.request.get_full_path()).replace("/s", "", 1)
+        link = get_object_or_404(Recipe, short_url=full_path)
+        url = self.request.build_absolute_uri(f"/api/recipes/{link.pk}/")
         return url
 
 
 def create_shopping_cart_pdf(shopping_cart_ingredients):
     """Создание списка покупок для последующей отправки."""
     LAST_RECODR_IN_PAGE = 23
-    reportlab.rl_config.TTFSearchPath.append(
-        str(settings.BASE_DIR) + 'fonts/')
+    reportlab.rl_config.TTFSearchPath.append(str(settings.BASE_DIR) + "fonts/")
     pdfmetrics.registerFont(TTFont("DejaVuSans", "DejaVuSans.ttf"))
     buffer = io.BytesIO()
     shopping_cart = canvas.Canvas(buffer)
 
-    shopping_cart.setFont('DejaVuSans', 15)
+    shopping_cart.setFont("DejaVuSans", 15)
     shopping_cart.drawString(230, 800, "Список покупок")
 
-    shopping_cart.setFont('DejaVuSans', 12)
+    shopping_cart.setFont("DejaVuSans", 12)
     count = 1
     position_record = 770
 
-    for key, values in shopping_cart_ingredients.items():
+    for ing in shopping_cart_ingredients:
         shopping_cart.drawString(
-            50, position_record, f'{count}. {key}. - {values}'
+            50, position_record, f"{count}. {ing[0]} - {ing[2]}{ing[1]}"
         )
         if count == LAST_RECODR_IN_PAGE:
             shopping_cart.showPage()
@@ -55,13 +52,3 @@ def create_shopping_cart_pdf(shopping_cart_ingredients):
     buffer.seek(0)
 
     return buffer
-
-
-def create_ingredients_in_recipe(ingredients, recipe):
-    """Создание ингредиентов для рецепта."""
-    for ingredient in ingredients:
-        RecipeIngredient.objects.create(
-            recipe=recipe,
-            ingredients=ingredient['ingredients'],
-            amount=ingredient['amount']
-        )
