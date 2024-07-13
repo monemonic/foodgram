@@ -5,12 +5,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
-from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.permissions import (
-    IsAuthenticated,
-    IsAuthenticatedOrReadOnly,
-)
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .filters import RecipeFilters
@@ -21,10 +17,10 @@ from .serializers import (
     RecipeFavoriteSerializer,
     RecipeSerializer,
     SubscribeUserSerializer,
+    SubscribeUserSafeMethodSerializer,
     ShoppingCartSerializer,
     TagSerializer,
     UserSerializer,
-    SubscribeUserSafeMethodSerializer
 )
 from .utils import create_shopping_cart_pdf
 from foodgram.models import (
@@ -71,26 +67,23 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def favorite(self, request, pk):
         """Получение и удаление на рецепт."""
         recipe = get_object_or_404(Recipe, pk=pk).pk
-        try:
-            serializer = RecipeFavoriteSerializer(data={"recipe": recipe})
-            serializer.is_valid(raise_exception=True)
-            serializer.save(user=self.request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        except Exception:
-            return Response(
-                "Ошибка добавления в избранное",
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        serializer = RecipeFavoriteSerializer(
+            data=({"recipe": recipe, "user": self.request.user.id})
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @favorite.mapping.delete
     def delete_favorite(self, request, pk):
         user = self.request.user
         recipe = get_object_or_404(Recipe, pk=pk)
-        delete_favorite = Favorite.objects.filter(
-            user=user, recipe=recipe).delete()
+        count_del_objects, _ = Favorite.objects.filter(
+            user=user, recipe=recipe
+        ).delete()
 
-        if delete_favorite[0] == 0:
+        if not count_del_objects:
             return Response(
                 "Вы не подписаны на этот рецепт.",
                 status=status.HTTP_400_BAD_REQUEST
@@ -115,36 +108,32 @@ class RecipeViewSet(viewsets.ModelViewSet):
         """Добавление и удаление рецептов из списка покупок."""
         recipe = get_object_or_404(Recipe, pk=pk).pk
 
-        try:
-            serializer = ShoppingCartSerializer(data=({"recipe": recipe}))
-            serializer.is_valid(raise_exception=True)
-            serializer.save(user=self.request.user)
+        serializer = ShoppingCartSerializer(
+            data=({"recipe": recipe, "user": self.request.user.id})
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
-            return Response(
-                serializer.data, status=status.HTTP_201_CREATED
-            )
-        except Exception:
-            return Response(
-                "Ошибка добавления в список покупок",
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @shopping_cart.mapping.delete
     def delete_shopping_cart(self, request, pk):
         user = self.request.user
         recipe = get_object_or_404(Recipe, pk=pk)
-        try:
-            user = get_object_or_404(ShoppingCart, user=user, recipe=recipe)
-            user.delete()
+        count_del_objects, _ = ShoppingCart.objects.filter(
+            user=user, recipe=recipe
+        ).delete()
+
+        if not count_del_objects:
             return Response(
-                "Рецепт успешно удален из списка покупок",
-                status=status.HTTP_204_NO_CONTENT,
+                "Вы не добавляли в список покупок этот рецепт.",
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        except Exception:
-            return Response(
-                "Ошибка удаления из списка покупок",
-                status=status.HTTP_400_BAD_REQUEST
-            )
+
+        return Response(
+            "Рецепт успешно удален из списка покупок",
+            status=status.HTTP_204_NO_CONTENT
+        )
 
     @action(
         detail=False,
@@ -154,40 +143,34 @@ class RecipeViewSet(viewsets.ModelViewSet):
         """Скачивание списка покупок."""
 
         sc_ingredients = (
-            RecipeIngredient.objects
-            .filter(recipe__shopping_carts__user=self.request.user)
-            .values('ingredients')
-            .annotate(
-                total_amount=Sum("amount")
+            RecipeIngredient.objects.filter(
+                recipe__shopping_carts__user=self.request.user
             )
+            .values("ingredients")
+            .annotate(total_amount=Sum("amount"))
             .values_list(
-                'ingredients', "ingredients__name",
-                "ingredients__measurement_unit", "total_amount"
+                "ingredients",
+                "ingredients__name",
+                "ingredients__measurement_unit",
+                "total_amount",
             )
         )
 
         shopping_cart = create_shopping_cart_pdf(sc_ingredients)
 
         return FileResponse(
-            shopping_cart, as_attachment=True,
-            filename=f"shopping cart {self.request.user}.pdf"
+            shopping_cart,
+            as_attachment=True,
+            filename=f"shopping cart {self.request.user}.pdf",
         )
 
 
 class UsersViewSet(UserViewSet):
-
     """API для юзеров."""
 
     queryset = User.objects.all()
     pagination_class = LimitOffsetPagination
     serializer_class = UserSerializer
-    permission_classes = (IsAuthenticatedOrReadOnly,)
-
-    def destroy(self, request, *args, **kwargs):
-        raise MethodNotAllowed(request.method)
-
-    def update(self, request, *args, **kwargs):
-        raise MethodNotAllowed(request.method)
 
     @action(
         detail=False, methods=["GET"],
@@ -197,36 +180,33 @@ class UsersViewSet(UserViewSet):
         """Получение страницы профиля текущего пользователя."""
         return super().me(request)
 
-    @action(detail=True, methods=["POST"])
+    @action(
+        detail=True, methods=["POST"],
+        permission_classes=(IsAuthenticated,)
+    )
     def subscribe(self, request, **kwargs):
         """
         Создание и удаление подписки на пользователя текущим пользователем.
         """
-        following = get_object_or_404(User, pk=self.kwargs['id']).pk
+        following = get_object_or_404(User, pk=self.kwargs["id"]).pk
 
-        try:
-            serializer = SubscribeUserSerializer(
-                data={"following": following},
-                context={"request": request}
-            )
-            serializer.is_valid(raise_exception=True)
-            serializer.save(user=self.request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        except Exception:
-            return Response(
-                "Ошибка подписки", status=status.HTTP_400_BAD_REQUEST
-            )
+        serializer = SubscribeUserSerializer(
+            data={"following": following, "user": self.request.user.id},
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @subscribe.mapping.delete
     def delete_subscribe(self, request, **kwargs):
         user = self.request.user
-        following = get_object_or_404(User, pk=self.kwargs['id'])
+        following = get_object_or_404(User, pk=self.kwargs["id"])
 
-        delete_subscribe = Subscriptions.objects.filter(
+        delete_subscribe, _ = Subscriptions.objects.filter(
             user=user, following=following
         ).delete()
-        if delete_subscribe[0] == 0:
+        if not delete_subscribe:
             return Response(
                 "Вы не подписаны на этого пользователя.",
                 status=status.HTTP_400_BAD_REQUEST,
@@ -243,12 +223,16 @@ class UsersViewSet(UserViewSet):
         page = self.paginate_queryset(queryset)
 
         serializer = SubscribeUserSafeMethodSerializer(
-            page, many=True,
-            context={"request": request}
+            page, many=True, context={"request": request}
         )
         return self.get_paginated_response(serializer.data)
 
-    @action(detail=False, methods=["PUT"], url_path="me/avatar")
+    @action(
+        detail=False,
+        methods=["PUT"],
+        url_path="me/avatar",
+        permission_classes=(IsAuthenticated,),
+    )
     def avatar(self, request):
         """Создание и удаление аватара текущего пользователя."""
         user = self.request.user

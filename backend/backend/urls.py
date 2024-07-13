@@ -5,7 +5,7 @@ from api.v1.utils import SearchRedirectView
 
 
 urlpatterns = [
-    path('s/<str:pk>/', SearchRedirectView.as_view()),
-    path('admin/', admin.site.urls),
-    path('api/', include('api.v1.urls')),
+    path("s/<str:pk>/", SearchRedirectView.as_view()),
+    path("admin/", admin.site.urls),
+    path("api/", include("api.v1.urls")),
 ]

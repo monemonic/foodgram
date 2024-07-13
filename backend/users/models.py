@@ -1,7 +1,11 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import RegexValidator
 
-from backend.constants import USER_NAME_FIELD_MAX_LENGTH
+from backend.constants import (
+    USER_NAME_FIELD_MAX_LENGTH,
+    EMAIL_FIELD_MAX_LENGTH
+)
 
 
 class User(AbstractUser):
@@ -24,7 +28,21 @@ class User(AbstractUser):
     )
     email = models.EmailField(
         "Электронная почта", unique=True,
+        max_length=EMAIL_FIELD_MAX_LENGTH,
         help_text="Электронная почта пользователя"
+    )
+
+    username = models.CharField(
+        "Юзернейм",
+        validators=[
+            RegexValidator(
+                regex=r"^[\w.@+-]+$",
+                message="Юзернейм не подходит.",
+            ),
+        ],
+        max_length=USER_NAME_FIELD_MAX_LENGTH,
+        help_text=f"Юзернейм пользователя, не более \
+            {USER_NAME_FIELD_MAX_LENGTH} символов",
     )
 
     USERNAME_FIELD = "email"

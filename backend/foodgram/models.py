@@ -4,7 +4,7 @@ from django.utils.crypto import get_random_string
 
 from users.models import User
 from backend.constants import (
-    INGREDIENT_FIELD_MAX_LENGTH,
+    INGREDIENT_NAME_FIELD_MAX_LENGTH,
     TAG_FIELD_MAX_LENGTH,
     RECIPE_FIELD_MAX_LENGTH,
     MIN_VALUE_VALIDATOR_COOKING_TIME,
@@ -12,22 +12,23 @@ from backend.constants import (
     MIN_VALUE_VALIDATOR_AMOUNT,
     MAX_VALUE_VALIDATOR_AMOUNT,
     SHORT_URL_MAX_LENGTH,
-    LENGTH_STRING_FOR_SHORT_LINK
+    LENGTH_STRING_FOR_SHORT_LINK,
+    MEANSUREMENT_UNIT_MAX_LENGTH,
 )
 
 
 class Ingredient(models.Model):
     name = models.CharField(
         "Название",
-        max_length=INGREDIENT_FIELD_MAX_LENGTH,
+        max_length=INGREDIENT_NAME_FIELD_MAX_LENGTH,
         help_text=f"Название ингредиента, не более \
-            {INGREDIENT_FIELD_MAX_LENGTH} символов",
+            {INGREDIENT_NAME_FIELD_MAX_LENGTH} символов",
     )
     measurement_unit = models.CharField(
         "Единица измерения",
-        max_length=INGREDIENT_FIELD_MAX_LENGTH,
+        max_length=MEANSUREMENT_UNIT_MAX_LENGTH,
         help_text=f"Единица измерения, не более \
-            {INGREDIENT_FIELD_MAX_LENGTH} символов",
+            {MEANSUREMENT_UNIT_MAX_LENGTH} символов",
     )
 
     class Meta:
@@ -47,12 +48,15 @@ class Ingredient(models.Model):
 
 class Tag(models.Model):
     name = models.CharField(
-        "Название", max_length=TAG_FIELD_MAX_LENGTH,
-        help_text=f"Имя тега, не более {TAG_FIELD_MAX_LENGTH} символов"
+        "Название",
+        max_length=TAG_FIELD_MAX_LENGTH,
+        help_text=f"Имя тега, не более {TAG_FIELD_MAX_LENGTH} символов",
     )
     slug = models.SlugField(
-        "Слаг", unique=True, max_length=TAG_FIELD_MAX_LENGTH,
-        help_text=f"Слаг тега, не более {TAG_FIELD_MAX_LENGTH} символов"
+        "Слаг",
+        unique=True,
+        max_length=TAG_FIELD_MAX_LENGTH,
+        help_text=f"Слаг тега, не более {TAG_FIELD_MAX_LENGTH} символов",
     )
 
     class Meta:
@@ -66,13 +70,13 @@ class Tag(models.Model):
 
 class Recipe(models.Model):
     author = models.ForeignKey(
-        User, on_delete=models.CASCADE,
-        verbose_name="Автор"
+        User, on_delete=models.CASCADE, verbose_name="Автор"
     )
     name = models.CharField(
-        "Название", max_length=RECIPE_FIELD_MAX_LENGTH,
+        "Название",
+        max_length=RECIPE_FIELD_MAX_LENGTH,
         help_text=f"Название блюда, не более \
-            {RECIPE_FIELD_MAX_LENGTH} символов"
+            {RECIPE_FIELD_MAX_LENGTH} символов",
     )
     image = models.ImageField(
         upload_to="foodgram/recipe/",
@@ -81,9 +85,10 @@ class Recipe(models.Model):
     )
     text = models.TextField("Описание", help_text="Описание блюда")
     ingredients = models.ManyToManyField(
-        Ingredient, through="RecipeIngredient",
+        Ingredient,
+        through="RecipeIngredient",
         through_fields=("recipe", "ingredients"),
-        verbose_name="Ингредиент"
+        verbose_name="Ингредиент",
     )
 
     tags = models.ManyToManyField(
@@ -96,15 +101,15 @@ class Recipe(models.Model):
         validators=[
             MinValueValidator(
                 MIN_VALUE_VALIDATOR_COOKING_TIME,
-                message=f'Значение не может быть меньше, \
-                    чем {MIN_VALUE_VALIDATOR_COOKING_TIME}'
+                message=f"Значение не может быть меньше, \
+                    чем {MIN_VALUE_VALIDATOR_COOKING_TIME}",
             ),
             MaxValueValidator(
                 MAX_VALUE_VALIDATOR_COOKING_TIME,
-                message=f'Значение не может быть больше, \
-                    чем {MAX_VALUE_VALIDATOR_COOKING_TIME}'
+                message=f"Значение не может быть больше, \
+                    чем {MAX_VALUE_VALIDATOR_COOKING_TIME}",
             ),
-        ]
+        ],
     )
     created_at = models.DateTimeField(auto_now_add=True)
     short_url = models.CharField(
@@ -120,23 +125,31 @@ class Recipe(models.Model):
     def __str__(self):
         return self.name
 
+    def create_unique_short_link(self):
+        unique_url = get_random_string(length=LENGTH_STRING_FOR_SHORT_LINK)
+
+        if not Recipe.objects.filter(short_url=unique_url).exists():
+            return unique_url
+        else:
+            self.create_unique_short_link()
+
     def save(self, *args, **kwargs):
-        self.short_url = (
-            f'/{get_random_string(length=LENGTH_STRING_FOR_SHORT_LINK)}/'
-        )
+        self.short_url = f"/{self.create_unique_short_link()}/"
         super().save(*args, **kwargs)
 
 
 class RecipeIngredient(models.Model):
     recipe = models.ForeignKey(
-        Recipe, on_delete=models.CASCADE,
+        Recipe,
+        on_delete=models.CASCADE,
         related_name="recipes",
-        help_text="Для какого рецепта используется ингредиент."
+        help_text="Для какого рецепта используется ингредиент.",
     )
     ingredients = models.ForeignKey(
-        Ingredient, on_delete=models.CASCADE,
-        related_name='ingredients',
-        help_text="Какой ингредиент используется для рецепта."
+        Ingredient,
+        on_delete=models.CASCADE,
+        related_name="ingredients",
+        help_text="Какой ингредиент используется для рецепта.",
     )
     amount = models.PositiveSmallIntegerField(
         "Количество",
@@ -144,15 +157,15 @@ class RecipeIngredient(models.Model):
         validators=[
             MinValueValidator(
                 MIN_VALUE_VALIDATOR_AMOUNT,
-                message=f'Значение не может быть меньше, \
-                    чем {MIN_VALUE_VALIDATOR_AMOUNT}'
+                message=f"Значение не может быть меньше, \
+                    чем {MIN_VALUE_VALIDATOR_AMOUNT}",
             ),
             MaxValueValidator(
                 MAX_VALUE_VALIDATOR_AMOUNT,
-                message=f'Значение не может быть больше, \
-                    чем {MIN_VALUE_VALIDATOR_AMOUNT}'
+                message=f"Значение не может быть больше, \
+                    чем {MIN_VALUE_VALIDATOR_AMOUNT}",
             ),
-        ]
+        ],
     )
 
     class Meta:
@@ -171,14 +184,17 @@ class RecipeIngredient(models.Model):
 
 class DefaultRecipeAction(models.Model):
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE,
+        User,
+        on_delete=models.CASCADE,
         verbose_name="Пользователь",
-        help_text="Пользователь, который добавил рецепт."
+        help_text="Пользователь, который добавил рецепт.",
     )
     recipe = models.ForeignKey(
-        Recipe, on_delete=models.CASCADE,
+        Recipe,
+        on_delete=models.CASCADE,
         verbose_name="Рецепт",
-        help_text="Рецепт, добавленный пользователем.")
+        help_text="Рецепт, добавленный пользователем.",
+    )
 
     class Meta:
         abstract = True
@@ -188,7 +204,6 @@ class DefaultRecipeAction(models.Model):
 
 
 class Favorite(DefaultRecipeAction):
-
     class Meta:
         default_related_name = "favorites"
         verbose_name = "Избранный рецепт"
@@ -201,7 +216,6 @@ class Favorite(DefaultRecipeAction):
 
 
 class ShoppingCart(DefaultRecipeAction):
-
     class Meta:
         default_related_name = "shopping_carts"
         verbose_name = "Список покупок"
