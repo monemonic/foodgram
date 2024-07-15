@@ -48,15 +48,18 @@ class RecipeAdmin(admin.ModelAdmin):
         "author",
         "text",
     )
-    list_editable = ()
-    search_fields = ("author", "name")
-    list_filter = ("name",)
+    search_fields = ("author__username", "name", "tags__name")
+    list_filter = ("tags__name",)
     list_display_links = ("name",)
     filter_horizontal = ("tags",)
 
 
+class IngredientsAdmin(admin.ModelAdmin):
+    search_fields = ("name",)
+
+
 admin.site.register(Tag)
-admin.site.register(Ingredient)
+admin.site.register(Ingredient, IngredientsAdmin)
 admin.site.register(Favorite)
 admin.site.register(ShoppingCart)
 admin.site.register(Recipe, RecipeAdmin)

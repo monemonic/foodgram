@@ -14,14 +14,14 @@ class SubscriptionsAdmin(admin.ModelAdmin):
 
 class SubscriptionsInline(admin.StackedInline):
     model = Subscriptions
-    extra = 2
+    extra = 1
     fk_name = "user"
 
 
 class CustomUserAdmin(UserAdmin):
     inlines = (SubscriptionsInline,)
     display = ("email", "id", "username", "first_name", "last_name")
-    search_fields = ("email", "id", "username")
+    search_fields = ("email", "username")
     list_filter = ("username",)
     list_display_links = ("email", "username")
 
