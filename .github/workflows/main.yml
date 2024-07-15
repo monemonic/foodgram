@@ -63,6 +63,12 @@ jobs:
     name: Push frontend Docker image to DockerHub
     runs-on: ubuntu-latest
     steps:
+
+      - name: Install dependencies
+        run: |
+          cd frontend/
+          npm ci
+
       - name: Check out the repo
         uses: actions/checkout@v3
 
