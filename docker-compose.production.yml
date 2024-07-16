@@ -19,7 +19,7 @@ services:
       - db
     volumes:
       - static:/static
-      - media:/media
+      - media:/app/media
 
   frontend:
     image: ${DOCKER_HUB_USERNAME}/foodgram_frontend
