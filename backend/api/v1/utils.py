@@ -37,7 +37,7 @@ def create_shopping_cart_pdf(shopping_cart_ingredients):
 
     for ing in shopping_cart_ingredients:
         shopping_cart.drawString(
-            50, position_record, f"{count}. {ing[0]} - {ing[2]}{ing[1]}"
+            50, position_record, f"{count}. {ing[1]} - {ing[3]}{ing[2]}"
         )
         if count == LAST_RECODR_IN_PAGE:
             shopping_cart.showPage()
