@@ -27,3 +27,9 @@ class RecipeFilters(FilterSet):
         if value and user.is_authenticated:
             return qs.filter(shopping_carts__user=user)
         return qs
+
+
+class IngredientsFilters(FilterSet):
+    name = filters.CharFilter(
+        field_name="name", lookup_expr="istartswith"
+    )
