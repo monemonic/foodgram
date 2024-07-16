@@ -46,15 +46,15 @@ TELEGRAM_TOKEN          # токен бота, посылающего сообщ
 5. При первом запуске проекте необходимо заполнить базу данных ингредиентами и тегами из подготовленных csv файлов:
 
 ```
-sudo docker compose exec backend python manage.py csv_import ingredients
-sudo docker compose exec backend python manage.py csv_import tags
+sudo docker exec -it foodgram-backend-1 python manage.py csv_import ingredients
+sudo docker exec -it foodgram-backend-1 python manage.py csv_import tags
 
 ```
 
 6. Создать суперпользователя:
 
 ```
-sudo docker compose exec backend python manage.py createsuperuser
+sudo docker exec -it foodgram-backend-1 python manage.py createsuperuser
 
 ```
 
