@@ -11,7 +11,7 @@ Python, Django, Django Rest Framework, ReportLab, Docker, Gunicorn, NGINX, Postg
 Проект завернут в Docker-контейнеры;
 Образы foodgram_frontend, foodgram_gateway и foodgram_backend запушены на DockerHub;
 Реализован workflow c автодеплоем на удаленный сервер и отправкой сообщения в Telegram;
-URL-адресу сайта на котором находится проект: https://homeworkenkorolev.zapto.org
+URL-адрес сайта на котором находится проект: https://homeworkenkorolev.zapto.org
 
 
 ## Запуск проекта.
@@ -61,6 +61,11 @@ sudo docker exec -it foodgram-backend-1 python manage.py csv_import tags
 sudo docker exec -it foodgram-backend-1 python manage.py createsuperuser
 
 ```
+
+## Доступ к документации API
+
+Доступ к документации осущеставляется по URL-адресу https://homeworkenkorolev.zapto.org/api/docs/
+
 
 ## Примеры запросов и ответов на них:
 
