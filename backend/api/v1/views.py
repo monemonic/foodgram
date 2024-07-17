@@ -8,6 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 
 from .filters import RecipeFilters, IngredientsFilters
 from .permissions import IsAuthorOrReadOnly
@@ -59,7 +60,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
     serializer_class = RecipeSerializer
     permission_classes = (IsAuthorOrReadOnly,)
     http_method_names = ["get", "post", "head", "patch", "delete"]
-    pagination_class = LimitOffsetPagination
+    pagination_class = PageNumberPagination
+    PageNumberPagination.page_size_query_param = 'limit'
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilters
 
